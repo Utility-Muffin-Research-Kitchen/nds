@@ -290,9 +290,13 @@ static int queue_copy(
     // SDL_RenderCopy on the aarch64 build, so queue_copy fires every frame.
     // The 100ms throttle below is only meant for the menu redraw loop; running
     // it on the gameplay path stalls the emulation thread ~80% of wall time
-    // (audio underruns, ~1/3 real-time speed). prehook_print_string only fills
-    // item.cnt when DraStic draws menu text, so use it to tell the two apart.
+    // (audio underruns, ~1/3 real-time speed). Gameplay can still draw text
+    // overlays, so require a recognized DraStic menu layer before throttling.
     if (myvideo.menu.drastic.item.cnt == 0) {
+        return 0;
+    }
+    if (get_drastic_menu_layer() < 0) {
+        SDL_memset(&myvideo.menu.drastic.item, 0, sizeof(myvideo.menu.drastic.item));
         return 0;
     }
 #endif
@@ -498,4 +502,3 @@ SDL_RenderDriver NDS_RenderDriver = {
         .max_texture_height = 600,
     }
 };
-

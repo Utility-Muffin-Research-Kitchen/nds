@@ -710,6 +710,11 @@ static int get_current_menu_layer(void)
     return -1;
 }
 
+int get_drastic_menu_layer(void)
+{
+    return get_current_menu_layer();
+}
+
 #if defined(UT)
 TEST(sdl2_video, get_current_menu_layer)
 {

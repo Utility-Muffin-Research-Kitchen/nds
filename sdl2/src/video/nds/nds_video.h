@@ -475,6 +475,7 @@ const char *l10n(const char *);
 int flush_lcd(int, const void *, SDL_Rect, SDL_Rect, int);
 
 int handle_sdl2_menu(int);
+int get_drastic_menu_layer(void);
 int handle_drastic_menu(void);
 
 int load_touch_pen(void);
