@@ -7,7 +7,9 @@ LDFLAGS += -shared
 SOURCES  = common.c
 
 ifneq ($(MOD),ut)
+ifneq ($(MOD),mlp1)
     SOURCES += common.S
+endif
 endif
 
 .PHONY: all

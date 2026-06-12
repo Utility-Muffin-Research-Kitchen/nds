@@ -1060,8 +1060,13 @@ static int update_key_bit(uint32_t c, uint32_t v)
         set_key_bit(KEY_BIT_START, v);
     }
     if (c == myevent.keypad.menu) {
+#if defined(MLP1)
+        trace("set KEY_BIT_DRASTIC\n");
+        set_key_bit(KEY_BIT_DRASTIC, v);
+#else
         trace("set KEY_BIT_MENU\n");
         set_key_bit(KEY_BIT_MENU, v);
+#endif
     }
     if (c == myevent.keypad.save) {
         trace("set KEY_BIT_SAVE\n");
@@ -1185,7 +1190,7 @@ TEST(sdl2_event, get_flip_key_code)
 }
 #endif
 
-#if defined(TRIMUI_BRICK) || defined(UT)
+#if defined(TRIMUI_BRICK) || defined(MLP1) || defined(UT)
 static int get_brick_key_code(struct input_event *e)
 {
     int r = 0;
@@ -1693,7 +1698,7 @@ int input_handler(void *data)
 
 #if defined(MIYOO_FLIP) || defined(UT)
         rk = get_flip_key_code(&ev);
-#elif defined(TRIMUI_BRICK) || defined(UT)
+#elif defined(TRIMUI_BRICK) || defined(MLP1) || defined(UT)
         rk = get_brick_key_code(&ev);
 #else
         rk = get_input_key_code(myevent.fd, &ev);
@@ -2353,4 +2358,3 @@ TEST(sdl2_event, prehook_platform_get_input)
     free(in);
 }
 #endif
-

@@ -2419,7 +2419,9 @@ CheckNDSVideo()
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lSDL2_image"
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lSDL2_ttf"
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lrt"
-        EXTRA_LDFLAGS="$EXTRA_LDFLAGS -ljson-c"
+        if test x$MOD != xmlp1; then
+            EXTRA_LDFLAGS="$EXTRA_LDFLAGS -ljson-c"
+        fi
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -L../detour"
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -ldtr"
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -L../common"
@@ -2471,6 +2473,15 @@ CheckNDSVideo()
         EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lwayland-client"
     fi
 
+    if test x$MOD = xmlp1; then
+        EXTRA_CFLAGS="$EXTRA_CFLAGS -DMLP1"
+        EXTRA_CFLAGS="$EXTRA_CFLAGS -DNDS_ARM64"
+        EXTRA_CFLAGS="$EXTRA_CFLAGS -DCFG_USING_JSON_FORMAT=0"
+
+        EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lwayland-egl"
+        EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lwayland-client"
+    fi
+
     if test x$MOD = xgkd_pixel2; then
         EXTRA_CFLAGS="$EXTRA_CFLAGS -DGKD_PIXEL2"
         EXTRA_CFLAGS="$EXTRA_CFLAGS -I../runner"
@@ -2506,9 +2517,11 @@ CheckNDSVideo()
     else
         EXTRA_CFLAGS="$EXTRA_CFLAGS -O3"
         EXTRA_CFLAGS="$EXTRA_CFLAGS -ffast-math"
-        EXTRA_CFLAGS="$EXTRA_CFLAGS -mfpu=neon"
-        EXTRA_CFLAGS="$EXTRA_CFLAGS -march=armv7-a"
-        EXTRA_CFLAGS="$EXTRA_CFLAGS -mtune=cortex-a7"
+        if test x$MOD != xmlp1; then
+            EXTRA_CFLAGS="$EXTRA_CFLAGS -mfpu=neon"
+            EXTRA_CFLAGS="$EXTRA_CFLAGS -march=armv7-a"
+            EXTRA_CFLAGS="$EXTRA_CFLAGS -mtune=cortex-a7"
+        fi
     fi
 }
 
@@ -3805,6 +3818,7 @@ case "$host" in
             *gkd_miniplus*)     CheckNDSVideo ;;
             *moto_xt897*)       CheckNDSVideo ;;
             *fxtec_qx1000*)     CheckNDSVideo ;;
+            *mlp1*)             CheckNDSVideo ;;
             *)                  CheckVisibilityHidden ;;
         esac
 

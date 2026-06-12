@@ -11,9 +11,13 @@
 #include <EGL/egl.h>
 #include <GLES2/gl2.h>
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(UT)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1) || defined(UT)
 #include <wayland-client.h>
 #include <wayland-egl.h>
+#endif
+
+#if defined(MLP1)
+#include "xdg-shell-client-protocol.h"
 #endif
 
 #if defined(MIYOO_FLIP)
@@ -122,6 +126,13 @@ typedef enum {
 #define SCREEN_H        480
 #define INIT_CPU_CORE   2
 #define MAX_CPU_CORE    2
+#endif
+
+#if defined(MLP1)
+#define WL_WIN_W        960
+#define WL_WIN_H        720
+#define SCREEN_W        640
+#define SCREEN_H        480
 #endif
 
 #if defined(TRIMUI_BRICK)
@@ -243,16 +254,22 @@ typedef struct {
 
     int max_shader;
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(UT)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1) || defined(UT)
     struct {
+#if !defined(MLP1)
         struct wl_shell *shell;
+        struct wl_shell_surface *shell_surface;
+#else
+        struct xdg_wm_base *xdg_wm_base;
+        struct xdg_surface *xdg_surface;
+        struct xdg_toplevel *xdg_toplevel;
+#endif
         struct wl_region *region;
         struct wl_display *display;
         struct wl_surface *surface;
         struct wl_registry *registry;
         struct wl_egl_window *window;
         struct wl_compositor *compositor;
-        struct wl_shell_surface *shell_surface;
 
         struct {
             int running;
@@ -263,7 +280,7 @@ typedef struct {
     } wl;
 #endif
 
-#if defined(MIYOO_FLIP) || defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(UT)
+#if defined(MIYOO_FLIP) || defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1) || defined(UT)
     struct {
         EGLConfig config;
         EGLDisplay display;
@@ -284,7 +301,7 @@ typedef struct {
             GLint tex_sample;
         } frag;
 
-#if !defined(FXTEC_QX1000) && !defined(MOTO_XT897)
+#if !defined(FXTEC_QX1000) && !defined(MOTO_XT897) && !defined(MLP1)
         int mem_fd;
         uint8_t* ccu_mem;
         uint8_t* dac_mem;
@@ -467,4 +484,3 @@ int resize_disp(void);
 int enable_fb_plane(int);
 
 #endif
-
