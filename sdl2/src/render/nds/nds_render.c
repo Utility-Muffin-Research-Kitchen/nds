@@ -285,6 +285,18 @@ static int queue_copy(
 {
     trace("call %s()\n", __func__);
 
+#if defined(MLP1)
+    // DraStic presents both its in-game frames and its menu through
+    // SDL_RenderCopy on the aarch64 build, so queue_copy fires every frame.
+    // The 100ms throttle below is only meant for the menu redraw loop; running
+    // it on the gameplay path stalls the emulation thread ~80% of wall time
+    // (audio underruns, ~1/3 real-time speed). prehook_print_string only fills
+    // item.cnt when DraStic draws menu text, so use it to tell the two apart.
+    if (myvideo.menu.drastic.item.cnt == 0) {
+        return 0;
+    }
+#endif
+
     myvideo.lcd.show_fps = 0;
     myvideo.menu.drastic.enable = 1;
     usleep(100000);

@@ -41,7 +41,7 @@
 #define DRASTIC_MENU_NO_FILE        "drastic_no.png"
 #define DRASTIC_MENU_CURSOR_FILE    "drastic_cursor.png"
 
-#if defined(MOTO_XT897) || defined(FXTEC_QX1000)
+#if defined(MOTO_XT897) || defined(FXTEC_QX1000) || defined(MLP1)
 #define DEF_STATE_PATH              "/opt/state/nds"
 #endif
 
@@ -80,6 +80,11 @@ enum layout_mode_t {
     LAYOUT_MODE_C1,      //
 #endif
 
+#if defined(MLP1)
+    LAYOUT_MODE_C0,      // (Custom Mode)
+    LAYOUT_MODE_C1,      //
+#endif
+
     LAYOUT_MODE_MAX,
 };
 
@@ -99,7 +104,7 @@ enum layout_mode_t {
 #define DEF_AUTO_STATE      0
 #define DEF_AUTO_SLOT       10
 
-#if defined(MOTO_XT897) || defined(FXTEC_QX1000)
+#if defined(MOTO_XT897) || defined(FXTEC_QX1000) || defined(MLP1)
 #define DEF_LAYOUT_MODE     LAYOUT_MODE_C0
 #define DEF_LAYOUT_ALT      LAYOUT_MODE_C1
 #else
@@ -184,7 +189,9 @@ typedef enum {
     FILTER_PIXEL,
 } filter_type_t;
 
+#ifndef CFG_USING_JSON_FORMAT
 #define CFG_USING_JSON_FORMAT   1
+#endif
 #define JSON_MAGIC              "magic"
 #define JSON_SWAP_SCREEN        "swap_screen"
 #define JSON_SWAP_L1_L2         "l1_l2_swap"
@@ -348,4 +355,3 @@ uint32_t rgb565_to_rgb888(uint16_t);
 #endif
 
 #endif
-

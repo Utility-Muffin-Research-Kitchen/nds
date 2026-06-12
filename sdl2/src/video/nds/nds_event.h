@@ -20,6 +20,8 @@
 #define INPUT_DEV   "/dev/input/event1"
 #define TOUCH_DEV   "/dev/input/event7"
 #define POWER_DEV   "/dev/input/event3"
+#elif defined(MLP1)
+#define INPUT_DEV   "/dev/input/event4"
 #elif defined(GKD_PIXEL2)
 #define INPUT_DEV   "/dev/input/event2"
 #elif defined(GKD_MINIPLUS)
@@ -148,6 +150,32 @@
 #define DEV_KEY_CODE_LOAD       14
 #define DEV_KEY_CODE_FAST       -1
 #define DEV_KEY_CODE_EXIT       28
+#endif
+
+#if defined(MLP1)
+#define DEV_KEY_CODE_UP         544
+#define DEV_KEY_CODE_DOWN       545
+#define DEV_KEY_CODE_LEFT       546
+#define DEV_KEY_CODE_RIGHT      547
+#define DEV_KEY_CODE_A          305
+#define DEV_KEY_CODE_B          304
+#define DEV_KEY_CODE_X          307
+#define DEV_KEY_CODE_Y          308
+#define DEV_KEY_CODE_L1         310
+#define DEV_KEY_CODE_R1         311
+#define DEV_KEY_CODE_L2         312
+#define DEV_KEY_CODE_R2         313
+#define DEV_KEY_CODE_START      315
+#define DEV_KEY_CODE_SELECT     314
+#define DEV_KEY_CODE_MENU       316
+#define DEV_KEY_CODE_POWER      -1
+#define DEV_KEY_CODE_VOL_UP     115
+#define DEV_KEY_CODE_VOL_DOWN   114
+
+#define DEV_KEY_CODE_SAVE       317
+#define DEV_KEY_CODE_LOAD       -1
+#define DEV_KEY_CODE_FAST       -1
+#define DEV_KEY_CODE_EXIT       -1
 #endif
 
 #if defined(UT)
@@ -383,4 +411,3 @@ void pump_event(_THIS);
 void prehook_platform_get_input(uintptr_t);
 
 #endif
-

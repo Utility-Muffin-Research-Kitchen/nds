@@ -15,13 +15,16 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include "common.h"
+
+#if CFG_USING_JSON_FORMAT
 #include <json-c/json.h>
+#endif
 
 #if defined(UT)
 #include "unity_fixture.h"
 #endif
 
-#include "common.h"
 #include "nds_firmware.h"
 #include "nds_bios_arm7.h"
 #include "nds_bios_arm9.h"
@@ -121,6 +124,13 @@ int write_file(const char *path, const void *buf, int len)
     close(fd);
     return r;
 }
+
+#if defined(NDS_ARM64)
+void* neon_memcpy(void *dest, const void *src, size_t n)
+{
+    return memcpy(dest, src, n);
+}
+#endif
 
 #if defined(UT)
 TEST(common, write_file)
@@ -783,4 +793,3 @@ uint32_t rgb565_to_rgb888(uint16_t c)
 
     return (r << 16) | (g << 8) | b;
 }
-

@@ -31,6 +31,50 @@ static char state_path[MAX_PATH] = { 0 };
 
 static int init_table(void);
 
+#if defined(NDS_ARM64)
+static uintptr_t get_exe_base(void)
+{
+    static uintptr_t base = 0;
+    FILE *fp = NULL;
+    char line[512] = { 0 };
+
+    if (base) {
+        return base;
+    }
+
+    fp = fopen("/proc/self/maps", "r");
+    if (!fp) {
+        error("failed to open /proc/self/maps\n");
+        return 0;
+    }
+
+    while (fgets(line, sizeof(line), fp)) {
+        unsigned long start = 0;
+        unsigned long end = 0;
+        unsigned long offset = 0;
+        char perms[5] = { 0 };
+
+        if (!strstr(line, "drastic64")) {
+            continue;
+        }
+
+        if (sscanf(line, "%lx-%lx %4s %lx", &start, &end, perms, &offset) == 4) {
+            base = (uintptr_t)(start - offset);
+            trace("resolved drastic64 base=0x%lx from %s", (unsigned long)base, line);
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    if (!base) {
+        error("failed to resolve drastic64 base address\n");
+    }
+
+    return base;
+}
+#endif
+
 #if defined(UT)
 TEST_GROUP(detour);
 
@@ -586,6 +630,10 @@ static int patch_drastic64(uint64_t pos, uint64_t pfn)
 
     fp = fopen(buf, "rb+");
     if (fp == NULL) {
+        if (errno == ETXTBSY) {
+            trace("target file is busy; assume patched executable is running\n");
+            return 0;
+        }
         error("failed to open file (\'%s\', err=%d)\n", buf, errno);
         return r;
     }
@@ -659,7 +707,45 @@ int add_prehook(void *org, void *cb, uint8_t *restore)
 #endif
 
 #if defined(NDS_ARM64)
-    r = patch_drastic64((uintptr_t)org, (uintptr_t)cb);
+    uintptr_t org_addr = (uintptr_t)org;
+
+    if (org_addr < 0x10000000UL) {
+        uintptr_t base = get_exe_base();
+        if (!base) {
+            return r;
+        }
+        org = (void *)(base + org_addr);
+        trace("resolved prehook target=0x%lx\n", (unsigned long)(uintptr_t)org);
+    }
+
+    if (unlock_area(org) >= 0) {
+        uintptr_t c = (uintptr_t)cb;
+        volatile uint8_t *m = (uint8_t *)(intptr_t)org;
+        uint8_t dst[RESTORE_BUF_SIZE] = {
+            0x42, 0x00, 0x00, 0x58,
+            0x40, 0x00, 0x1f, 0xd6,
+            0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00
+        };
+
+        if (restore) {
+            trace("backup prehook data\n");
+            memcpy(restore, org, RESTORE_BUF_SIZE);
+        }
+
+        dst[8] = (uint8_t)(c >> 0);
+        dst[9] = (uint8_t)(c >> 8);
+        dst[10] = (uint8_t)(c >> 16);
+        dst[11] = (uint8_t)(c >> 24);
+        dst[12] = (uint8_t)(c >> 32);
+        dst[13] = (uint8_t)(c >> 40);
+        dst[14] = (uint8_t)(c >> 48);
+        dst[15] = (uint8_t)(c >> 56);
+
+        memcpy((void *)m, dst, sizeof(dst));
+        __builtin___clear_cache((char *)m, (char *)m + sizeof(dst));
+        r = 0;
+    }
 #else
     if (unlock_area(org) >= 0) {
         uintptr_t c = (uintptr_t)cb;
@@ -773,31 +859,84 @@ static int init_table(void)
     myhook.var.savestate_thread = (savestate_thread_data_struct *)0x083e4ad0;
 
 #if defined(NDS_ARM64)
-    myhook.fun.menu = (void *)0x0007fbd0;
-    myhook.fun.free = (void *)0x0000d660;
-    myhook.fun.realloc = (void *)0x0000d740;
-    myhook.fun.malloc = (void *)0x0000dfb0;
-    myhook.fun.screen_copy16 = (void *)0x00088290;
-    myhook.fun.print_string = (void *)0x00087f00;
-    myhook.fun.print_string_ext = (void *)0x00087bf0;
-    myhook.fun.load_state_index = (void *)0x00075230;
-    myhook.fun.save_state_index = (void *)0x00075150;
-    myhook.fun.quit = (void *)0x0000e8d0;
-    myhook.fun.savestate_pre = (void *)0;
-    myhook.fun.savestate_post = (void *)0;
-    myhook.fun.update_screen = (void *)0x0008a120;
-    myhook.fun.load_state = (void *)0x000746f0;
-    myhook.fun.save_state = (void *)0x00074da0;
-    myhook.fun.blit_screen_menu = (void *)0x00088570;
-    myhook.fun.initialize_backup = (void *)0x00072530;
-    myhook.fun.set_screen_menu_off = (void *)0x0008a4a0;
-    myhook.fun.get_screen_ptr = (void *)0x0008a9c0;
-    myhook.fun.select_quit = (void *)0x0007a260;
-    myhook.fun.platform_get_input = (void *)0x0008acc0;
+    uintptr_t base = get_exe_base();
 
-    myhook.fun.spu_adpcm_decode_block = (void *)0;
-    myhook.fun.render_scanline_tiled_4bpp = (void *)0;
-    myhook.fun.render_polygon_setup_perspective_steps = (void *)0;
+    if (!base) {
+        return -1;
+    }
+
+#define EXE_PTR(offset) ((void *)(base + (uintptr_t)(offset)))
+#define EXE_UPTRP(offset) ((uintptr_t *)(base + (uintptr_t)(offset)))
+#define EXE_U32P(offset) ((uint32_t *)(base + (uintptr_t)(offset)))
+#define EXE_U8P(offset) ((uint8_t *)(base + (uintptr_t)(offset)))
+
+    myhook.var.system.base = EXE_UPTRP(0x03fc000);
+    myhook.var.sdl.screen[0].texture = EXE_UPTRP(0x3f31520);
+    myhook.var.sdl.screen[0].pixels = EXE_UPTRP(0x3f31528);
+    myhook.var.sdl.screen[0].x = EXE_U32P(0x3f31530);
+    myhook.var.sdl.screen[0].y = EXE_U32P(0x3f31534);
+    myhook.var.sdl.screen[0].w = EXE_U32P(0x3f31538);
+    myhook.var.sdl.screen[0].h = EXE_U32P(0x3f3153c);
+    myhook.var.sdl.screen[0].show = EXE_U8P(0x3f31540);
+    myhook.var.sdl.screen[0].hires_mode = EXE_U8P(0x3f31541);
+    myhook.var.sdl.screen[1].texture = EXE_UPTRP(0x3f31548);
+    myhook.var.sdl.screen[1].pixels = EXE_UPTRP(0x3f31550);
+    myhook.var.sdl.screen[1].x = EXE_U32P(0x3f31558);
+    myhook.var.sdl.screen[1].y = EXE_U32P(0x3f3155c);
+    myhook.var.sdl.screen[1].w = EXE_U32P(0x3f31560);
+    myhook.var.sdl.screen[1].h = EXE_U32P(0x3f31564);
+    myhook.var.sdl.screen[1].show = EXE_U8P(0x3f31568);
+    myhook.var.sdl.screen[1].hires_mode = EXE_U8P(0x3f31569);
+    myhook.var.sdl.window = EXE_UPTRP(0x3f31570);
+    myhook.var.sdl.renderer = EXE_UPTRP(0x3f31578);
+    myhook.var.sdl.bytes_per_pixel = EXE_U32P(0x3f315a8);
+    myhook.var.sdl.swap_screens = EXE_U32P(0x3f315cc);
+    myhook.var.sdl.needs_reinitializing = EXE_U32P(0x3f315d4);
+    myhook.var.adpcm.step_table = EXE_U32P(0x160240);
+    myhook.var.adpcm.index_step_table = EXE_U32P(0x1602f8);
+    myhook.var.desmume_footer_str = EXE_U32P(0x160380);
+    myhook.var.savestate_thread = (savestate_thread_data_struct *)EXE_PTR(0x3eba40);
+
+    myhook.fun.menu = EXE_PTR(0x0007fbd0);
+    myhook.fun.free = EXE_PTR(0x0000d660);
+    myhook.fun.realloc = EXE_PTR(0x0000d740);
+    myhook.fun.malloc = EXE_PTR(0x0000dfb0);
+    myhook.fun.screen_copy16 = EXE_PTR(0x00088290);
+    myhook.fun.print_string = EXE_PTR(0x00087f00);
+    myhook.fun.print_string_ext = EXE_PTR(0x00087bf0);
+    myhook.fun.load_state_index = EXE_PTR(0x00075230);
+    myhook.fun.save_state_index = EXE_PTR(0x00075150);
+    myhook.fun.quit = EXE_PTR(0x0000e8d0);
+    myhook.fun.savestate_pre = NULL;
+    myhook.fun.savestate_post = NULL;
+    myhook.fun.update_screen = EXE_PTR(0x0008a120);
+    myhook.fun.load_state = EXE_PTR(0x000746f0);
+    myhook.fun.save_state = EXE_PTR(0x00074da0);
+    myhook.fun.blit_screen_menu = EXE_PTR(0x00088570);
+    myhook.fun.initialize_backup = EXE_PTR(0x00072530);
+    myhook.fun.platform_get_input = EXE_PTR(0x0008acc0);
+    myhook.fun.set_screen_swap = EXE_PTR(0x0008a9b0);
+    myhook.fun.set_screen_menu_on = EXE_PTR(0x0008aae0);
+    myhook.fun.set_screen_menu_off = EXE_PTR(0x0008a4a0);
+    myhook.fun.set_screen_hires_mode = EXE_PTR(0x0008a2c0);
+    myhook.fun.set_screen_orientation = EXE_PTR(0x0008a990);
+    myhook.fun.set_screen_scale_factor = EXE_PTR(0x0008a970);
+    myhook.fun.get_screen_ptr = EXE_PTR(0x0008a9c0);
+    myhook.fun.select_quit = EXE_PTR(0x0007a260);
+    myhook.fun.config_setup_input_map = EXE_PTR(0x00076800);
+    myhook.fun.nds_file_get_icon_data = EXE_PTR(0x00076380);
+
+    myhook.fun.spu_adpcm_decode_block = NULL;
+    myhook.fun.render_scanline_tiled_4bpp = NULL;
+    myhook.fun.render_polygon_setup_perspective_steps = NULL;
+    myhook.fun.audio_capture_flush = NULL;
+    myhook.fun.audio_synchronous_update = NULL;
+    myhook.fun.audio_buffer_force_feed = NULL;
+
+#undef EXE_PTR
+#undef EXE_UPTRP
+#undef EXE_U32P
+#undef EXE_U8P
 #else
     myhook.fun.menu = (void *)0x080a0a18;
     myhook.fun.free = (void *)0x08003e58;
@@ -926,6 +1065,7 @@ int init_hook(const char *home, size_t page, const char *path)
         strncpy(state_path, path, sizeof(state_path));
         trace("new state path=\"%s\"\n", path);
 
+#if !defined(NDS_ARM64)
         add_prehook(
             (void *)myhook.fun.load_state_index,
             (void *)prehook_load_state_index,
@@ -943,13 +1083,16 @@ int init_hook(const char *home, size_t page, const char *path)
             (void *)prehook_initialize_backup,
             NULL
         );
+#endif
     }
 
+#if !defined(NDS_ARM64)
     add_prehook(
         (void *)myhook.fun.audio_capture_flush,
         (void *)prehook_audio_capture_flush,
         NULL
     );
+#endif
 
 #if !defined(NDS_ARM64)
     add_prehook(
@@ -1042,4 +1185,3 @@ TEST(detour, render_polygon_setup_perspective_steps)
     TEST_PASS();
 }
 #endif
-

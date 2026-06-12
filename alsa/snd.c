@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/ioctl.h>
-#include <json-c/json.h>
 #include <alsa/output.h>
 #include <alsa/input.h>
 #include <alsa/conf.h>
@@ -26,7 +25,7 @@
 #include <sys/time.h>
 #include <syslog.h>
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(UT)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1) || defined(UT)
 #include <pulse/pulseaudio.h>
 #endif
 
@@ -52,7 +51,7 @@ typedef struct {
     pthread_mutex_t lock;
 } queue_t;
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(UT)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1) || defined(UT)
 struct mypulse_t {
     pa_threaded_mainloop *mainloop;
     pa_context *context;
@@ -265,7 +264,7 @@ TEST(alsa, prehook_adpcm_decode_block)
 }
 #endif
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(UT)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1) || defined(UT)
 static void pulse_context_state(pa_context *context, void *userdata)
 {
     trace("call %s()\n", __func__);
@@ -697,7 +696,7 @@ static void* audio_handler(void *id)
                 write(dsp_fd, mypcm.buf, mypcm.len);
 #endif
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1)
                 if (mypulse.mainloop) {
                     pa_threaded_mainloop_lock(mypulse.mainloop);
                     pa_stream_write(mypulse.stream, mypcm.buf, mypcm.len, NULL, 0, PA_SEEK_RELATIVE);
@@ -1134,7 +1133,7 @@ int snd_pcm_start(snd_pcm_t *pcm)
     open_dsp();
 #endif
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1)
     mypulse.mainloop = pa_threaded_mainloop_new();
     if (mypulse.mainloop == NULL) {
         error("failed to open PulseAudio device\n");
@@ -1232,7 +1231,7 @@ int snd_pcm_close(snd_pcm_t *pcm)
     }
 #endif
 
-#if defined(FXTEC_QX1000) || defined(MOTO_XT897)
+#if defined(FXTEC_QX1000) || defined(MOTO_XT897) || defined(MLP1)
     if (mypulse.mainloop) {
         pa_threaded_mainloop_stop(mypulse.mainloop);
     }
@@ -1340,4 +1339,3 @@ TEST(alsa, snd_pcm_writei)
     TEST_ASSERT_EQUAL_INT(128, snd_pcm_writei((void *)0xdead, (void *)0xdead, 128));
 }
 #endif
-

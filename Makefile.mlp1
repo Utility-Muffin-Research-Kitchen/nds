@@ -1,0 +1,16 @@
+export MOD=mlp1
+export HOST=aarch64-buildroot-linux-gnu
+
+CFLAGS  += -O3
+CFLAGS  += -ffast-math
+CFLAGS  += -DMLP1
+CFLAGS  += -DNDS_ARM64
+CFLAGS  += -DCFG_USING_JSON_FORMAT=0
+CFLAGS  += -Wl,--no-undefined
+
+LDFLAGS += -lpulse
+
+export MORE_CFLAGS=${CFLAGS}
+export MORE_LDFLAGS=${LDFLAGS}
+
+include Makefile.base
