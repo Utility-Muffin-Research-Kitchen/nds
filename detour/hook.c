@@ -721,9 +721,11 @@ int add_prehook(void *org, void *cb, uint8_t *restore)
     if (unlock_area(org) >= 0) {
         uintptr_t c = (uintptr_t)cb;
         volatile uint8_t *m = (uint8_t *)(intptr_t)org;
+        /* Use x16 (IP0) as the trampoline scratch register so prehook callbacks
+         * still receive the original x0-x7 argument registers. */
         uint8_t dst[RESTORE_BUF_SIZE] = {
-            0x42, 0x00, 0x00, 0x58,
-            0x40, 0x00, 0x1f, 0xd6,
+            0x50, 0x00, 0x00, 0x58,
+            0x00, 0x02, 0x1f, 0xd6,
             0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00
         };

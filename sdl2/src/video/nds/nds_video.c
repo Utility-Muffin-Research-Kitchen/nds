@@ -117,12 +117,18 @@ static int load_shader_file(const char *);
 #endif
 
 static const char *DRASTIC_MENU_LAYER_P0 = "Change Options";
-static const char *DRASTIC_MENU_LAYER_P1 = "Frame skip type";
+static const char *DRASTIC_MENU_LAYER_P1 = "Configure Options";
+static const char *DRASTIC_MENU_LAYER_P1_ALT = "Frame skip type";
 static const char *DRASTIC_MENU_LAYER_P2 = "D-Pad Up";
 static const char *DRASTIC_MENU_LAYER_P3 = "Enter Menu";
 static const char *DRASTIC_MENU_LAYER_P4 = "Username";
 static const char *DRASTIC_MENU_LAYER_P5 = "KB Return: toggle cheat";
 static const char *DRASTIC_MENU_LAYER_P6 = "KB Return: select";
+
+static bool is_drastic_menu_selected(uint32_t bg)
+{
+    return bg != 0;
+}
 
 static SDL_Rect def_layout_pos[][2] = {
     // LAYOUT_MODE_N0
@@ -680,7 +686,8 @@ static int get_current_menu_layer(void)
         if (!memcmp(myvideo.menu.drastic.item.idx[cc].msg, DRASTIC_MENU_LAYER_P0, strlen(DRASTIC_MENU_LAYER_P0))) {
             return MENU_MAIN;
         }
-        else if (!memcmp(myvideo.menu.drastic.item.idx[cc].msg, DRASTIC_MENU_LAYER_P1, strlen(DRASTIC_MENU_LAYER_P1))) {
+        else if (!memcmp(myvideo.menu.drastic.item.idx[cc].msg, DRASTIC_MENU_LAYER_P1, strlen(DRASTIC_MENU_LAYER_P1)) ||
+                 !memcmp(myvideo.menu.drastic.item.idx[cc].msg, DRASTIC_MENU_LAYER_P1_ALT, strlen(DRASTIC_MENU_LAYER_P1_ALT))) {
             return MENU_OPTION;
         }
         else if (!memcmp(myvideo.menu.drastic.item.idx[cc].msg, DRASTIC_MENU_LAYER_P2, strlen(DRASTIC_MENU_LAYER_P2))) {
@@ -715,6 +722,9 @@ TEST(sdl2_video, get_current_menu_layer)
     TEST_ASSERT_EQUAL_INT(MENU_MAIN, get_current_menu_layer());
 
     strcpy(myvideo.menu.drastic.item.idx[0].msg, DRASTIC_MENU_LAYER_P1);
+    TEST_ASSERT_EQUAL_INT(MENU_OPTION, get_current_menu_layer());
+
+    strcpy(myvideo.menu.drastic.item.idx[0].msg, DRASTIC_MENU_LAYER_P1_ALT);
     TEST_ASSERT_EQUAL_INT(MENU_OPTION, get_current_menu_layer());
 
     strcpy(myvideo.menu.drastic.item.idx[0].msg, DRASTIC_MENU_LAYER_P2);
@@ -828,7 +838,7 @@ static int draw_drastic_menu_main(void)
         }
 
         if (draw) {
-            if (p->bg) {
+            if (is_drastic_menu_selected(p->bg)) {
                 rt.x = 5 / div;
                 rt.y = y - (3 / div);
                 rt.w = SCREEN_W - (10 / div);
@@ -875,7 +885,7 @@ static int draw_drastic_menu_main(void)
                 buf,
                 x,
                 y,
-                p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                 0
             );
         }
@@ -1062,7 +1072,7 @@ static int draw_drastic_menu_option(void)
 
     cursor = 0;
     for (cc = 0; cc < myvideo.menu.drastic.item.cnt; cc++) {
-        if (myvideo.menu.drastic.item.idx[cc].bg > 0) {
+        if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc].bg)) {
             cursor = cc;
         }
     }
@@ -1089,7 +1099,7 @@ static int draw_drastic_menu_option(void)
             p = &myvideo.menu.drastic.item.idx[cc];
         
             cnt+= 1;            
-            if (p->bg) {
+            if (is_drastic_menu_selected(p->bg)) {
                 rt.x = 5 / div;
                 rt.y = y - (3 / div);
                 rt.w = SCREEN_W - (10 / div);
@@ -1114,7 +1124,7 @@ static int draw_drastic_menu_option(void)
                     buf,
                     SCREEN_W - w - (ww / div),
                     y,
-                    p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                    is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                     0
                 );
 
@@ -1129,7 +1139,7 @@ static int draw_drastic_menu_option(void)
                 buf,
                 ww / div,
                 y,
-                p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                 0
             );
         }
@@ -1173,15 +1183,15 @@ static int draw_drastic_menu_controller(void)
         if ((myvideo.menu.drastic.item.idx[cc].y >= 240) &&
             (myvideo.menu.drastic.item.idx[cc].y <= 376))
         {
-            if ((myvideo.menu.drastic.item.idx[cc + 1].bg > 0) ||
-                (myvideo.menu.drastic.item.idx[cc + 2].bg > 0))
+            if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 1].bg) ||
+                is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 2].bg))
             {
                 break;
             }
             cc += 3;
         }
         else {
-            if (myvideo.menu.drastic.item.idx[cc].bg > 0) {
+            if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc].bg)) {
                 break;
             }
             cc += 1;
@@ -1216,28 +1226,32 @@ static int draw_drastic_menu_controller(void)
             y = (25 / div) + ((cnt - s0) * w);
 
             if ((p->y >= 240) && (p->y <= 376)) {
-                if (myvideo.menu.drastic.item.idx[cc + 1].bg || myvideo.menu.drastic.item.idx[cc + 2].bg) {
-                    int sum = myvideo.menu.drastic.item.idx[cc + 1].bg + myvideo.menu.drastic.item.idx[cc + 2].bg;
+                {
+                    bool left_sel = is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 1].bg);
+                    bool right_sel = is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 2].bg);
+                    uint32_t sum = myvideo.menu.drastic.item.idx[cc + 1].bg + myvideo.menu.drastic.item.idx[cc + 2].bg;
                     uint32_t c = sum > 500 ? 0xff0000 : MENU_COLOR_DRASTIC;
 
-                    rt.x = 5 / div;
-                    rt.y = y - (3 / div);
-                    rt.w = SCREEN_W - (10 / div);
-                    rt.h = w;
-                    SDL_FillRect(
-                        myvideo.menu.drastic.frame,
-                        &rt,
-                        SDL_MapRGB(myvideo.menu.drastic.frame->format, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff)
-                    );
+                    if (left_sel || right_sel) {
+                        rt.x = 5 / div;
+                        rt.y = y - (3 / div);
+                        rt.w = SCREEN_W - (10 / div);
+                        rt.h = w;
+                        SDL_FillRect(
+                            myvideo.menu.drastic.frame,
+                            &rt,
+                            SDL_MapRGB(myvideo.menu.drastic.frame->format, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff)
+                        );
+                    }
                 }
-                draw_info(myvideo.menu.drastic.frame, p->msg, 20 / div, y, p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
+                draw_info(myvideo.menu.drastic.frame, p->msg, 20 / div, y, is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
                 if ((p->y >= 240) && (p->y <= 376)) {
                     draw_info(
                         myvideo.menu.drastic.frame,
                         l10n(myvideo.menu.drastic.item.idx[cc + 1].msg),
                         300 / div,
                         y,
-                        myvideo.menu.drastic.item.idx[cc + 1].bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                        is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 1].bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                         0
                     );
 
@@ -1246,13 +1260,13 @@ static int draw_drastic_menu_controller(void)
                         l10n(myvideo.menu.drastic.item.idx[cc + 2].msg),
                         480 / div,
                         y,
-                        myvideo.menu.drastic.item.idx[cc + 2].bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                        is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 2].bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                         0
                     );
                 }
             }
             else {
-                if (p->bg) {
+                if (is_drastic_menu_selected(p->bg)) {
                     rt.x = 5 / div;
                     rt.y = y - (3 / div);
                     rt.w = SCREEN_W - (10 / div);
@@ -1260,7 +1274,7 @@ static int draw_drastic_menu_controller(void)
                     SDL_FillRect(myvideo.menu.drastic.frame, &rt, SDL_MapRGB(myvideo.menu.drastic.frame->format, 
                         (MENU_COLOR_DRASTIC >> 16) & 0xff, (MENU_COLOR_DRASTIC >> 8) & 0xff, MENU_COLOR_DRASTIC & 0xff));
                 }
-                draw_info(myvideo.menu.drastic.frame, l10n(p->msg), 20 / div, y, p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
+                draw_info(myvideo.menu.drastic.frame, l10n(p->msg), 20 / div, y, is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
             }
         }
 
@@ -1308,15 +1322,15 @@ static int draw_drastic_menu_controller2(void)
         if ((myvideo.menu.drastic.item.idx[cc].y >= 240) &&
             (myvideo.menu.drastic.item.idx[cc].y <= NDS_Hx2))
         {
-            if ((myvideo.menu.drastic.item.idx[cc + 1].bg > 0) ||
-                (myvideo.menu.drastic.item.idx[cc + 2].bg > 0))
+            if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 1].bg) ||
+                is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 2].bg))
             {
                 break;
             }
             cc+= 3;
         }
         else {
-            if (myvideo.menu.drastic.item.idx[cc].bg > 0) {
+            if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc].bg)) {
                 break;
             }
             cc+= 1;
@@ -1351,29 +1365,31 @@ static int draw_drastic_menu_controller2(void)
             y = (25 / div) + ((cnt - s0) * w);
 
             if ((p->y >= 240) && (p->y <= NDS_Hx2)) {
-                if (myvideo.menu.drastic.item.idx[cc + 1].bg ||
-                    myvideo.menu.drastic.item.idx[cc + 2].bg)
                 {
-                    int sum = myvideo.menu.drastic.item.idx[cc + 1].bg + myvideo.menu.drastic.item.idx[cc + 2].bg;
+                    bool left_sel = is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 1].bg);
+                    bool right_sel = is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 2].bg);
+                    uint32_t sum = myvideo.menu.drastic.item.idx[cc + 1].bg + myvideo.menu.drastic.item.idx[cc + 2].bg;
                     uint32_t c = sum > 500 ? 0xff0000 : MENU_COLOR_DRASTIC;
 
-                    rt.x = 5 / div;
-                    rt.y = y - (3 / div);
-                    rt.w = SCREEN_W - (10 / div);
-                    rt.h = w;
-                    SDL_FillRect(
-                        myvideo.menu.drastic.frame,
-                        &rt,
-                        SDL_MapRGB(myvideo.menu.drastic.frame->format, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff));
+                    if (left_sel || right_sel) {
+                        rt.x = 5 / div;
+                        rt.y = y - (3 / div);
+                        rt.w = SCREEN_W - (10 / div);
+                        rt.h = w;
+                        SDL_FillRect(
+                            myvideo.menu.drastic.frame,
+                            &rt,
+                            SDL_MapRGB(myvideo.menu.drastic.frame->format, (c >> 16) & 0xff, (c >> 8) & 0xff, c & 0xff));
+                    }
                 }
-                draw_info(myvideo.menu.drastic.frame, p->msg, 20 / div, y, p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
+                draw_info(myvideo.menu.drastic.frame, p->msg, 20 / div, y, is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
                 if ((p->y >= 240) && (p->y <= NDS_Hx2)) {
                     draw_info(
                         myvideo.menu.drastic.frame,
                         l10n(myvideo.menu.drastic.item.idx[cc + 1].msg),
                         300 / div,
                         y,
-                        myvideo.menu.drastic.item.idx[cc + 1].bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                        is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 1].bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                         0
                     );
 
@@ -1382,13 +1398,13 @@ static int draw_drastic_menu_controller2(void)
                         l10n(myvideo.menu.drastic.item.idx[cc + 2].msg),
                         480 / div,
                         y,
-                        myvideo.menu.drastic.item.idx[cc + 2].bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                        is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc + 2].bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                         0
                     );
                 }
             }
             else {
-                if (p->bg) {
+                if (is_drastic_menu_selected(p->bg)) {
                     rt.x = 5 / div;
                     rt.y = y - (3 / div);
                     rt.w = SCREEN_W - (10 / div);
@@ -1409,7 +1425,7 @@ static int draw_drastic_menu_controller2(void)
                     l10n(p->msg),
                     20 / div,
                     y,
-                    p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                    is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                     0
                 );
             }
@@ -1468,7 +1484,7 @@ static int draw_drastic_menu_firmware(void)
         }
         else {
             y = (25 / div) + (cnt * ww);
-            if (((p->x == 92) || (p->x == 256)) && (p->bg)) {
+            if (((p->x == 92) || (p->x == 256)) && is_drastic_menu_selected(p->bg)) {
                 rt.x = 5 / div;
                 rt.y = y - (3 / div);
                 rt.w = SCREEN_W - (10 / div);
@@ -1513,7 +1529,7 @@ static int draw_drastic_menu_firmware(void)
                     buf,
                     SCREEN_W - w - (ww / div),
                     y,
-                    p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                    is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                     0
                 );
 
@@ -1527,7 +1543,7 @@ static int draw_drastic_menu_firmware(void)
                     buf,
                     SCREEN_W - w - (ww / div),
                     y,
-                    p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                    is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                     0
                 );
 
@@ -1542,7 +1558,7 @@ static int draw_drastic_menu_firmware(void)
                 buf,
                 ww / div,
                 y,
-                p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
+                is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL,
                 0
             );
         }
@@ -1612,7 +1628,7 @@ static int draw_drastic_menu_cheat(void)
 
     cursor = 0;
     for (cc=0; cc<myvideo.menu.drastic.item.cnt; cc++) {
-        if (myvideo.menu.drastic.item.idx[cc].bg > 0) {
+        if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc].bg)) {
             cursor = cc;
         }
     }
@@ -1651,7 +1667,7 @@ static int draw_drastic_menu_cheat(void)
         if ((cc >= s0) && (cc < s1)) {
             y = (25 / div) + (cnt * w);
 
-            if (p->bg) {
+            if (is_drastic_menu_selected(p->bg)) {
                 rt.x = 5 / div;
                 rt.y = y - (3 / div);
                 rt.w = SCREEN_W - (10 / div);
@@ -1664,7 +1680,7 @@ static int draw_drastic_menu_cheat(void)
             }
 
             cnt += 1;
-            draw_info(myvideo.menu.drastic.frame, p->msg, w / div, y, p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
+            draw_info(myvideo.menu.drastic.frame, p->msg, w / div, y, is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
             if (p->cheat && myvideo.menu.drastic.yes && myvideo.menu.drastic.no) {
                 rt.x = SCREEN_W - myvideo.menu.drastic.yes->w - (w / div);
                 rt.y = y - 1;
@@ -1719,13 +1735,13 @@ static int draw_drastic_menu_rom(void)
 
     for (cc = 0; cc < myvideo.menu.drastic.item.cnt; cc++) {
         if (myvideo.menu.drastic.item.idx[cc].x == 10) {
-            if (myvideo.menu.drastic.item.idx[cc].bg > 0) {
+            if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc].bg)) {
                 chk = 10;
                 break;
             }
         }
         if (myvideo.menu.drastic.item.idx[cc].x == 587) {
-            if (myvideo.menu.drastic.item.idx[cc].bg > 0) {
+            if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc].bg)) {
                 chk = 587;
                 break;
             }
@@ -1735,7 +1751,7 @@ static int draw_drastic_menu_rom(void)
     cursor = 0;
     for (cc = 0; cc < myvideo.menu.drastic.item.cnt; cc++) {
         if (myvideo.menu.drastic.item.idx[cc].x == chk) {
-            if (myvideo.menu.drastic.item.idx[cc].bg > 0) {
+            if (is_drastic_menu_selected(myvideo.menu.drastic.item.idx[cc].bg)) {
                 break;
             }
             cursor+= 1;
@@ -1787,7 +1803,7 @@ static int draw_drastic_menu_rom(void)
         if (p->x == chk) {
             y = (25 / div) + (((cnt - s0) + 1) * w);
             if ((cnt >= s0) && (cnt < s1)) {
-                if (p->bg) {
+                if (is_drastic_menu_selected(p->bg)) {
                     rt.x = 5 / div;
                     rt.y = y - (4 / div);
                     rt.w = SCREEN_W - (10 / div);
@@ -1800,7 +1816,7 @@ static int draw_drastic_menu_rom(void)
 
                     strcpy(buf, p->msg);
                 }
-                draw_info(myvideo.menu.drastic.frame, p->msg, 20 / div, y, p->bg ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
+                draw_info(myvideo.menu.drastic.frame, p->msg, 20 / div, y, is_drastic_menu_selected(p->bg) ? MENU_COLOR_SEL : MENU_COLOR_UNSEL, 0);
             }
             cnt+= 1;
         }
