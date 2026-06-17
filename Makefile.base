@@ -38,7 +38,7 @@ endif
 cfg:
 	mkdir -p drastic/lib
 ifneq ($(MOD),ut)
-	cp -a assets/$(MOD)/* drastic/ || true
+	if [ -d assets/$(MOD) ]; then cp -a assets/$(MOD)/. drastic/; fi
 endif
 
 ifeq ($(wildcard sdl2/Makefile),)
