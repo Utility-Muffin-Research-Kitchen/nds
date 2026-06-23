@@ -120,14 +120,22 @@ TEST(detour, unlock_area)
 int set_fast_forward(uint8_t v)
 {
 #if defined(NDS_ARM64)
-    if (myhook.var.system.config.fast_forward) {
-        *myhook.var.system.config.fast_forward = v;
+    uint32_t *ff = myhook.var.fast_forward;
+
+    if (!ff) {
+        return -1;
     }
-    if (myhook.var.fast_forward &&
-        (myhook.var.fast_forward != myhook.var.system.config.fast_forward))
-    {
-        *myhook.var.fast_forward = v;
-    }
+
+    unlock_area(ff);
+
+#if defined(UT)
+    return 0;
+#endif
+
+    // system_frame_sync uses `mov w2, #6` as the active fast-forward cadence.
+    // Patch the immediate; config.fast_forward is DraStic's saved on/off value.
+    *ff = 0x52800000 | (((uint32_t)v & 0xffff) << 5) | 0x2;
+    __builtin___clear_cache((char *)ff, (char *)ff + sizeof(*ff));
     return 0;
 #else
     uint32_t *ff = (uint32_t*)CODE_FAST_FORWARD;
@@ -934,7 +942,7 @@ static int init_table(void)
     myhook.var.adpcm.index_step_table = EXE_U32P(0x1602f8);
     myhook.var.desmume_footer_str = EXE_U32P(0x160380);
     myhook.var.pcm_handler = EXE_U32P(0x043c00c);
-    myhook.var.fast_forward = EXE_U32P(0x0481a04);                  // config + 0x45c (same as config.fast_forward)
+    myhook.var.fast_forward = EXE_U32P(0x000ed7c);                  // system_frame_sync: mov w2, #6 fast cadence
     myhook.var.pcm_handle = EXE_U32P(0x043c008);
     myhook.var.capture_handle = EXE_U32P(0x043cd40);
     myhook.var.mic_en = EXE_U8P(0x043cd40);
