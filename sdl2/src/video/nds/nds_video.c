@@ -859,18 +859,9 @@ static int draw_drastic_menu_main(void)
                     )
                 );
 
-#if !defined(NDS_ARM64)
-                /* The savestate-slot thumbnail preview reads
-                   myhook.var.system.savestate_num and calls load_state_index.
-                   init_table() leaves savestate_num at the bogus 32-bit address
-                   (the ARM64 override block never re-resolves it), so the
-                   preview dereferences a wild pointer and crashes the menu.
-                   Disable the thumbnail on aarch64 until the offset is found —
-                   the readable menu list itself works fine without it. */
                 if ((p->y == 320) || (p->y == 328)) {
                     draw_shot = 1;
                 }
-#endif
 
                 if (myconfig.menu.show_cursor && myvideo.menu.drastic.cursor) {
                     rt.x = (5 / div) + (x - myvideo.menu.drastic.cursor->w) / 2;
@@ -7815,7 +7806,11 @@ static int apply_sdl2_menu_setting(int cur_sel, int right_key, int is_lr)
         break;
 #endif
     case MENU_BIND_HOTKEY:
+#if defined(MLP1)
+        myconfig.hotkey = HOTKEY_BIND_MENU;
+#else
         myconfig.hotkey = right_key ? HOTKEY_BIND_SELECT : HOTKEY_BIND_MENU;
+#endif
         break;
     case MENU_SWAP_L1L2:
         myconfig.swap_l1_l2 = right_key;

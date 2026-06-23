@@ -168,9 +168,6 @@ typedef enum {
 #define MENU_CHEAT          6
 #define MENU_ROM            7
 
-#define HOTKEY_BIND_MENU    0
-#define HOTKEY_BIND_SELECT  1
-
 typedef enum {
 #if defined(MIYOO_MINI)
     ROTATE_90 = E_MI_GFX_ROTATE_90,

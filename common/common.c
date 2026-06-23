@@ -203,6 +203,7 @@ int reset_config(void)
     memset(&myconfig, 0, sizeof(myconfig));
 
     myconfig.magic = REL_VER;
+    myconfig.hotkey = DEF_HOTKEY;
     myconfig.layout.mode.sel = DEF_LAYOUT_MODE;
     myconfig.layout.mode.alt = DEF_LAYOUT_ALT;
     myconfig.layout.swin.alpha = DEF_SWIN_ALPHA;
@@ -393,6 +394,16 @@ int load_config(const char *home_path)
 
         err = 1;
         reset_config();
+    }
+#endif
+
+#if defined(MLP1)
+    if (myconfig.hotkey != DEF_HOTKEY) {
+        myconfig.hotkey = DEF_HOTKEY;
+    }
+    if ((myconfig.layout.mode.sel == LAYOUT_MODE_C0) &&
+        (myconfig.layout.mode.alt == LAYOUT_MODE_C1)) {
+        myconfig.layout.mode.alt = DEF_LAYOUT_ALT;
     }
 #endif
 

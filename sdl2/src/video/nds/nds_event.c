@@ -26,6 +26,11 @@
 
 nds_event myevent = { 0 };
 
+#if defined(MLP1)
+static int mlp1_menu_hotkey_used = 0;
+static int mlp1_drastic_menu_pulse = 0;
+#endif
+
 #if defined(MOTO_XT897) || defined(FXTEC_QX1000) || defined(UT)
 static touch_data_t tp[10] = { 0 };
 #endif
@@ -204,6 +209,12 @@ static int hit_hotkey(uint32_t bit)
     mask = 1 << bit;
     mask |= (1 << ((myconfig.hotkey == HOTKEY_BIND_SELECT) ? KEY_BIT_SELECT : KEY_BIT_MENU));
     r = (myevent.keypad.cur_bits ^ mask) ? 0 : 1;
+
+#if defined(MLP1)
+    if (r && (myconfig.hotkey == HOTKEY_BIND_MENU)) {
+        mlp1_menu_hotkey_used = 1;
+    }
+#endif
 
     trace("bit=%d, r=%d\n", bit, r);
 
@@ -1061,8 +1072,19 @@ static int update_key_bit(uint32_t c, uint32_t v)
     }
     if (c == myevent.keypad.menu) {
 #if defined(MLP1)
-        trace("set KEY_BIT_DRASTIC\n");
-        set_key_bit(KEY_BIT_DRASTIC, v);
+        trace("set KEY_BIT_MENU\n");
+        if (v) {
+            set_key_bit(KEY_BIT_MENU, 1);
+        }
+        else {
+            set_key_bit(KEY_BIT_MENU, 0);
+            if (!mlp1_menu_hotkey_used) {
+                trace("pulse KEY_BIT_DRASTIC\n");
+                set_key_bit(KEY_BIT_DRASTIC, 1);
+                mlp1_drastic_menu_pulse = 1;
+            }
+            mlp1_menu_hotkey_used = 0;
+        }
 #else
         trace("set KEY_BIT_MENU\n");
         set_key_bit(KEY_BIT_MENU, v);
@@ -1905,6 +1927,13 @@ static int send_key_to_menu(void)
 #if !defined(UT)
                 handle_sdl2_menu(cc);
 #endif
+                if (myvideo.menu.sdl2.enable == 0) {
+                    myevent.keypad.cur_bits = 0;
+                    myevent.keypad.pre_bits = 0;
+                    myevent.input.touch_status = 0;
+                    myevent.input.button_status = 0;
+                    return 0;
+                }
             }
         }
     }
@@ -2052,7 +2081,18 @@ static int send_key_event(int raw_event)
         release_key();
         update_raw_input_statue(KEY_BIT_QUIT, 0);
     }
-    myevent.keypad.pre_bits = myevent.keypad.cur_bits;
+#if defined(MLP1)
+    if (mlp1_drastic_menu_pulse &&
+        (myevent.keypad.cur_bits & (1 << KEY_BIT_DRASTIC))) {
+        myevent.keypad.cur_bits &= ~(1 << KEY_BIT_DRASTIC);
+        myevent.keypad.pre_bits = (1 << KEY_BIT_DRASTIC);
+        mlp1_drastic_menu_pulse = 0;
+    }
+    else
+#endif
+    {
+        myevent.keypad.pre_bits = myevent.keypad.cur_bits;
+    }
 
     return 0;
 }

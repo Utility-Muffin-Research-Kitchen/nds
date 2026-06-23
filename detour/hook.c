@@ -119,6 +119,17 @@ TEST(detour, unlock_area)
 
 int set_fast_forward(uint8_t v)
 {
+#if defined(NDS_ARM64)
+    if (myhook.var.system.config.fast_forward) {
+        *myhook.var.system.config.fast_forward = v;
+    }
+    if (myhook.var.fast_forward &&
+        (myhook.var.fast_forward != myhook.var.system.config.fast_forward))
+    {
+        *myhook.var.fast_forward = v;
+    }
+    return 0;
+#else
     uint32_t *ff = (uint32_t*)CODE_FAST_FORWARD;
 
     // 0xe3a03006
@@ -130,6 +141,7 @@ int set_fast_forward(uint8_t v)
 
     *ff = 0xe3a03000 | v;
     return 0;
+#endif
 }
 
 #if defined(UT)
@@ -872,7 +884,31 @@ static int init_table(void)
 #define EXE_U32P(offset) ((uint32_t *)(base + (uintptr_t)(offset)))
 #define EXE_U8P(offset) ((uint8_t *)(base + (uintptr_t)(offset)))
 
+    // The mutable globals below are all FIELDS of the `nds_system` struct,
+    // which the symbol table places at virtual offset 0x3fc000. The previous
+    // table based the config group on 0x3c000 (a dropped 'f'), which put every
+    // address 0x3c0000 too low — inside the read-only/exec LOAD segment
+    // (0x0..0x14c7ef) instead of the writable .bss. `initialize_system` calls
+    // config_default(nds_system + 0x855a8), so the config struct is at
+    // 0x3fc000 + 0x855a8 = 0x4815a8; field offsets within it were verified from
+    // config_default/save_config_file (e.g. save_config_file writes the
+    // "fast_forward" key from config+0x45c).
     myhook.var.system.base = EXE_UPTRP(0x03fc000);
+    myhook.var.system.gamecard_name = EXE_U32P(0x0487380);          // nds_system + 0x8b380
+    myhook.var.system.savestate_num = EXE_U32P(0x0481a00);          // config + 0x458
+    myhook.var.system.config.base = EXE_UPTRP(0x04815a8);           // nds_system + 0x855a8
+    myhook.var.system.config.hires_3d = EXE_U32P(0x0481a48);        // config + 0x4a0
+    myhook.var.system.config.controls_a = (uint16_t *)EXE_PTR(0x0482274); // config + 0xccc
+    myhook.var.system.config.controls_b = (uint16_t *)EXE_PTR(0x04822c6); // config + 0xd1e
+    myhook.var.system.config.rom_directory = EXE_U32P(0x04815e4);   // config + 0x3c
+    myhook.var.system.config.file_list_display_type = EXE_U32P(0x04819e4); // config + 0x43c
+    myhook.var.system.config.savestate_number = EXE_U32P(0x0481a00); // config + 0x458
+    myhook.var.system.config.fast_forward = EXE_U32P(0x0481a04);    // config + 0x45c
+    myhook.var.system.video.realtime_speed_percentage = (float *)EXE_PTR(0x169100);
+    myhook.var.system.video.rendered_frames_percentage = (float *)EXE_PTR(0x169104);
+    myhook.var.system.micphone_status = EXE_U8P(0x043cd40);
+    myhook.var.system.spu.audio = (audio_struct *)EXE_PTR(0x043c000);
+    myhook.var.system.user_root_path = EXE_U32P(0x0486b80);         // nds_system + 0x8ab80
     myhook.var.sdl.screen[0].texture = EXE_UPTRP(0x3f31520);
     myhook.var.sdl.screen[0].pixels = EXE_UPTRP(0x3f31528);
     myhook.var.sdl.screen[0].x = EXE_U32P(0x3f31530);
@@ -897,6 +933,11 @@ static int init_table(void)
     myhook.var.adpcm.step_table = EXE_U32P(0x160240);
     myhook.var.adpcm.index_step_table = EXE_U32P(0x1602f8);
     myhook.var.desmume_footer_str = EXE_U32P(0x160380);
+    myhook.var.pcm_handler = EXE_U32P(0x043c00c);
+    myhook.var.fast_forward = EXE_U32P(0x0481a04);                  // config + 0x45c (same as config.fast_forward)
+    myhook.var.pcm_handle = EXE_U32P(0x043c008);
+    myhook.var.capture_handle = EXE_U32P(0x043cd40);
+    myhook.var.mic_en = EXE_U8P(0x043cd40);
     myhook.var.savestate_thread = (savestate_thread_data_struct *)EXE_PTR(0x3eba40);
 
     myhook.fun.menu = EXE_PTR(0x0007fbd0);
@@ -928,12 +969,15 @@ static int init_table(void)
     myhook.fun.config_setup_input_map = EXE_PTR(0x00076800);
     myhook.fun.nds_file_get_icon_data = EXE_PTR(0x00076380);
 
-    myhook.fun.spu_adpcm_decode_block = NULL;
+    myhook.fun.spu_adpcm_decode_block = EXE_PTR(0x0006be80);
     myhook.fun.render_scanline_tiled_4bpp = NULL;
     myhook.fun.render_polygon_setup_perspective_steps = NULL;
     myhook.fun.audio_capture_flush = NULL;
-    myhook.fun.audio_synchronous_update = NULL;
-    myhook.fun.audio_buffer_force_feed = NULL;
+    myhook.fun.audio_synchronous_update = EXE_PTR(0x00088640);
+    myhook.fun.audio_buffer_force_feed = EXE_PTR(0x0008ca70);
+    myhook.fun.spu_fake_microphone_start = EXE_PTR(0x0006c8b0);
+    myhook.fun.spu_fake_microphone_stop = EXE_PTR(0x0006c8d0);
+    myhook.fun.save_directory_config_file = EXE_PTR(0x000794b0);
 
 #undef EXE_PTR
 #undef EXE_UPTRP
@@ -971,6 +1015,8 @@ static int init_table(void)
     myhook.fun.audio_capture_flush = (void *)0x080aa894;
     myhook.fun.audio_synchronous_update = (void *)0x080aa7c0;
     myhook.fun.audio_buffer_force_feed = (void *)0x080aa760;
+    myhook.fun.spu_fake_microphone_start = NULL;
+    myhook.fun.spu_fake_microphone_stop = NULL;
     myhook.fun.save_directory_config_file = (void *)0x0809a4b0;
 #endif
 
@@ -1142,6 +1188,18 @@ TEST(detour, quit_hook)
 
 int toggle_micphone(void)
 {
+#if defined(NDS_ARM64)
+    // Disabled on aarch64 (Menu+Up). spu_fake_microphone_start() must be called
+    // with the same pointer DraStic's own update_input() passes, which is
+    // *(nds_system + 0x80008) + 0x1587000 (a runtime-derived sub-allocation),
+    // NOT the static nds_system base. It then loads *(arg+0x40000+3312) and
+    // dereferences [ptr+8], so calling it cold with the wrong base (or before
+    // the mic buffer is set up) faults. Microphone is a niche feature on this
+    // device; leave it off until the pointer derivation + preconditions are
+    // replicated and verified. Toggling use_mic alone is harmless.
+    myhook.use_mic ^= 1;
+    return 0;
+#else
     const int buf_size = 65536;
     static int need_clean = 0;
 
@@ -1166,6 +1224,8 @@ int toggle_micphone(void)
             sizeof(int16_t) * buf_size
         );
     }
+    return 0;
+#endif
 }
 
 #if defined(UT)

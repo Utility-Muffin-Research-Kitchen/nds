@@ -236,6 +236,8 @@ typedef struct {
     void *audio_capture_flush;
     void *audio_synchronous_update;
     void *audio_buffer_force_feed;
+    void *spu_fake_microphone_start;
+    void *spu_fake_microphone_stop;
     void *save_directory_config_file;
     uint8_t org_save_directory_config_file[RESTORE_BUF_SIZE];
 } fun_t;
@@ -331,6 +333,7 @@ typedef int32_t (*nds_save_state)(void *, const char *, char *, uint16_t *, uint
 typedef int (*nds_printf_chk)(int, const char *);
 typedef int (*nds_puts)(const char *);
 typedef void (*nds_select_quit)(void *, void *);
+typedef void (*nds_spu_fake_microphone)(void *);
 typedef void (*nds_config_setup_input_map)(void *);
 typedef int32_t (*nds_file_get_icon_data)(char *, nds_icon_struct *);
 typedef int32_t (*nds_save_directory_config_file)(void *, char *);
@@ -356,4 +359,3 @@ void render_polygon_setup_perspective_steps(void);
 
 
 #endif
-

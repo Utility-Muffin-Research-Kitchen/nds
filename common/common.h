@@ -104,10 +104,19 @@ enum layout_mode_t {
 #define DEF_AUTO_STATE      0
 #define DEF_AUTO_SLOT       10
 
-#if defined(MOTO_XT897) || defined(FXTEC_QX1000) || defined(MLP1)
+#define HOTKEY_BIND_MENU    0
+#define HOTKEY_BIND_SELECT  1
+
+#if defined(MLP1)
+#define DEF_HOTKEY          HOTKEY_BIND_MENU
+#define DEF_LAYOUT_MODE     LAYOUT_MODE_C0
+#define DEF_LAYOUT_ALT      LAYOUT_MODE_N1
+#elif defined(MOTO_XT897) || defined(FXTEC_QX1000)
+#define DEF_HOTKEY          HOTKEY_BIND_MENU
 #define DEF_LAYOUT_MODE     LAYOUT_MODE_C0
 #define DEF_LAYOUT_ALT      LAYOUT_MODE_C1
 #else
+#define DEF_HOTKEY          HOTKEY_BIND_MENU
 #define DEF_LAYOUT_MODE     LAYOUT_MODE_N1
 #define DEF_LAYOUT_ALT      LAYOUT_MODE_N3
 #endif
