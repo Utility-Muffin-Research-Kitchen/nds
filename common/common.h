@@ -100,6 +100,9 @@ enum layout_mode_t {
 #define DEF_FAST_FORWARD    6
 #define DEF_SWIN_ALPHA      6
 #define DEF_SWIN_BORDER     1
+// Small-window corner for the N0/N1 transparent overlay, matching the menu's
+// SWIN_POS_STR order: 0 top-right, 1 top-left, 2 bottom-left, 3 bottom-right.
+#define DEF_SWIN_POS        0
 #define DEF_JOY_DZONE       25
 #define DEF_AUTO_STATE      0
 #define DEF_AUTO_SLOT       10

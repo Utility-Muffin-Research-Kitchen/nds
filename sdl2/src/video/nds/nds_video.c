@@ -2240,6 +2240,44 @@ static int process_screen(void)
 #endif
     }
 
+#if defined(MLP1)
+    // Composite the N0/N1 transparent second screen. screen[0] / TEXTURE_LCD0 is
+    // the small overlay; the loop above skips it (need_update = !!idx for the
+    // N-modes) and, being iterated before the main screen, it would also sit
+    // underneath it, so on the EGL path the overlay was never painted. Draw it
+    // here, after the main screen, so flush_lcd()'s TEXTURE_LCD0 alpha-blend
+    // lays it on top. The texture was already uploaded for idx 0 in the loop.
+    // Corner is chosen by swin.pos, matching the menu's SWIN_POS_STR /
+    // draw_small_win convention (0 top-right, 1 top-left, 2 bottom-left,
+    // 3 bottom-right); transparency by swin.alpha.
+    if (((cur_mode_sel == LAYOUT_MODE_N0) || (cur_mode_sel == LAYOUT_MODE_N1)) &&
+        (myconfig.layout.swin.alpha > 0) &&
+        !myvideo.menu.sdl2.enable && !myvideo.menu.drastic.enable)
+    {
+        int hires = (myhook.var.sdl.screen[0].hires_mode &&
+            *myhook.var.sdl.screen[0].hires_mode) ? 1 : 0;
+        void *opix = myvideo.lcd.virt_addr[myvideo.lcd.cur_sel ^ 1][0];
+        SDL_Rect osrt = { 0, 0, hires ? NDS_Wx2 : NDS_W, hires ? NDS_Hx2 : NDS_H };
+        SDL_Rect odrt = {
+            0, 0,
+            myvideo.layout.mode[cur_mode_sel].screen[0].w,
+            myvideo.layout.mode[cur_mode_sel].screen[0].h
+        };
+        int opitch = *myhook.var.sdl.bytes_per_pixel * osrt.w;
+
+        switch (myconfig.layout.swin.pos % 4) {
+        case 0: odrt.x = WL_WIN_W - odrt.w; odrt.y = 0;                 break; // top-right
+        case 1: odrt.x = 0;                 odrt.y = 0;                 break; // top-left
+        case 2: odrt.x = 0;                 odrt.y = WL_WIN_H - odrt.h; break; // bottom-left
+        case 3: odrt.x = WL_WIN_W - odrt.w; odrt.y = WL_WIN_H - odrt.h; break; // bottom-right
+        }
+
+        if (opix && odrt.w && odrt.h) {
+            flush_lcd(TEXTURE_LCD0, opix, osrt, odrt, opitch);
+        }
+    }
+#endif
+
     if (show_info > 0) {
         switch (cur_mode_sel) {
         case LAYOUT_MODE_B0:

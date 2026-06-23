@@ -208,6 +208,7 @@ int reset_config(void)
     myconfig.layout.mode.alt = DEF_LAYOUT_ALT;
     myconfig.layout.swin.alpha = DEF_SWIN_ALPHA;
     myconfig.layout.swin.border = DEF_SWIN_BORDER;
+    myconfig.layout.swin.pos = DEF_SWIN_POS;
     myconfig.pen.speed = DEF_PEN_SPEED;
     myconfig.auto_state = DEF_AUTO_STATE;
     myconfig.fast_forward = DEF_FAST_FORWARD;
