@@ -1,7 +1,14 @@
 export MOD=mlp1
 export HOST=aarch64-buildroot-linux-gnu
+MLP1_BUILD_PROFILE ?= perf
+MLP1_FLAGS_MK ?= $(firstword $(wildcard /opt/mlp1-toolchain/umrk/mlp1-build-flags.mk ../mlp1-toolchain/flags/mlp1-build-flags.mk))
+ifneq ($(MLP1_FLAGS_MK),)
+include $(MLP1_FLAGS_MK)
+else
+UMRK_MLP1_PROFILE_CFLAGS ?= -O3 -mcpu=cortex-a55 -mtune=cortex-a55 -ffunction-sections -fdata-sections -DNDEBUG
+endif
 
-CFLAGS  += -O3
+CFLAGS  += $(UMRK_MLP1_PROFILE_CFLAGS)
 CFLAGS  += -ffast-math
 CFLAGS  += -DMLP1
 CFLAGS  += -DNDS_ARM64
