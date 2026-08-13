@@ -21,7 +21,11 @@
 #define TOUCH_DEV   "/dev/input/event7"
 #define POWER_DEV   "/dev/input/event3"
 #elif defined(MLP1)
-#define INPUT_DEV   "/dev/input/event4"
+/* Resolved at runtime from Jawaka's launch roster rather than hardcoded --
+   see nds_mlp1_input_dev(). The old "/dev/input/event4" was the physical
+   Loong Gamepad, which the launch namespace deliberately hides. */
+const char *nds_mlp1_input_dev(void);
+#define INPUT_DEV   nds_mlp1_input_dev()
 #elif defined(GKD_PIXEL2)
 #define INPUT_DEV   "/dev/input/event2"
 #elif defined(GKD_MINIPLUS)

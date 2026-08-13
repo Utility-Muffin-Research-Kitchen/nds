@@ -1672,6 +1672,47 @@ TEST(sdl2_event, handle_touch_event)
 #endif
 #endif
 
+#if defined(MLP1)
+/* Jawaka freezes a controller roster for each launch and exports it in
+   SDL_JOYSTICK_DEVICE as colon-separated event paths in player order, backed
+   by a private /dev/input holding exactly those nodes. The first entry is
+   player 1: a paired wireless controller when one is connected, otherwise
+   Jawaka's calibrated virtual Loong, whose stick range is corrected.
+
+   This backend used to open /dev/input/event4 directly. That is the raw
+   physical Loong -- uncalibrated, grabbed by Jawaka, and absent from the
+   child's /dev/input -- so the hardcoded path can only open the wrong device
+   or nothing at all. There is deliberately no fallback: recovering by probing
+   event nodes is what would put raw physical input back in front of the
+   player. */
+const char *nds_mlp1_input_dev(void)
+{
+    static char path[128];
+    const char *roster = NULL;
+    size_t len = 0;
+
+    if (path[0]) {
+        return path;
+    }
+
+    roster = getenv("SDL_JOYSTICK_DEVICE");
+    if ((roster == NULL) || (roster[0] == '\0')) {
+        error("SDL_JOYSTICK_DEVICE is unset: no controller roster to open\n");
+        exit(-1);
+    }
+
+    len = strcspn(roster, ":");
+    if ((len == 0) || (len >= sizeof(path))) {
+        error("no usable player 1 entry in SDL_JOYSTICK_DEVICE \"%s\"\n", roster);
+        exit(-1);
+    }
+
+    memcpy(path, roster, len);
+    path[len] = '\0';
+    return path;
+}
+#endif
+
 int input_handler(void *data)
 {
     int rk = 0;
