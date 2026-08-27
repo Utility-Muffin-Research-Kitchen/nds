@@ -1241,11 +1241,17 @@ static int get_brick_key_code(struct input_event *e)
     switch (e->code) {
     case 17:
         if (e->value == -1) {
+            if (pre_up_down && pre_up_down != DEV_KEY_CODE_UP) {
+                update_key_bit(pre_up_down, 0);
+            }
             e->code = DEV_KEY_CODE_UP;
             e->value = 1;
             pre_up_down = DEV_KEY_CODE_UP;
         }
         else if (e->value == 1) {
+            if (pre_up_down && pre_up_down != DEV_KEY_CODE_DOWN) {
+                update_key_bit(pre_up_down, 0);
+            }
             e->code = DEV_KEY_CODE_DOWN;
             e->value = 1;
             pre_up_down = DEV_KEY_CODE_DOWN;
@@ -1253,15 +1259,22 @@ static int get_brick_key_code(struct input_event *e)
         else {
             e->code = pre_up_down;
             e->value = 0;
+            pre_up_down = 0;
         }
         break;
     case 16:
         if (e->value == -1) {
+            if (pre_left_right && pre_left_right != DEV_KEY_CODE_LEFT) {
+                update_key_bit(pre_left_right, 0);
+            }
             e->code = DEV_KEY_CODE_LEFT;
             e->value = 1;
             pre_left_right = DEV_KEY_CODE_LEFT;
         }
         else if (e->value == 1) {
+            if (pre_left_right && pre_left_right != DEV_KEY_CODE_RIGHT) {
+                update_key_bit(pre_left_right, 0);
+            }
             e->code = DEV_KEY_CODE_RIGHT;
             e->value = 1;
             pre_left_right = DEV_KEY_CODE_RIGHT;
@@ -1269,6 +1282,7 @@ static int get_brick_key_code(struct input_event *e)
         else {
             e->code = pre_left_right;
             e->value = 0;
+            pre_left_right = 0;
         }
         break;
     case 2:
@@ -1294,6 +1308,31 @@ TEST(sdl2_event, get_brick_key_code)
     e.value = 1;
     TEST_ASSERT_EQUAL_INT(1, get_brick_key_code(&e));
     TEST_ASSERT_EQUAL_INT(DEV_KEY_CODE_DOWN, e.code);
+}
+
+TEST(sdl2_event, get_brick_key_code_releases_opposite_hat_direction)
+{
+    struct input_event e = { 0 };
+
+    myevent.keypad.left = DEV_KEY_CODE_LEFT;
+    myevent.keypad.right = DEV_KEY_CODE_RIGHT;
+    myevent.keypad.cur_bits = 0;
+
+    e.code = 16;
+    e.value = 1;
+    TEST_ASSERT_EQUAL_INT(1, get_brick_key_code(&e));
+    update_key_bit(e.code, e.value);
+
+    e.code = 16;
+    e.value = -1;
+    TEST_ASSERT_EQUAL_INT(1, get_brick_key_code(&e));
+    update_key_bit(e.code, e.value);
+
+    e.code = 16;
+    e.value = 0;
+    TEST_ASSERT_EQUAL_INT(1, get_brick_key_code(&e));
+    update_key_bit(e.code, e.value);
+    TEST_ASSERT_EQUAL_INT(0, myevent.keypad.cur_bits);
 }
 #endif
 
